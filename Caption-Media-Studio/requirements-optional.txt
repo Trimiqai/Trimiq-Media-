@@ -1,0 +1,3 @@
+# Optional features. These may not have compatible wheels for every Termux build.
+faster-whisper>=1.1
+edge-tts>=7.0

@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10111a">
+  <title>Caption Media Studio</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" data-nav="dashboard" aria-label="Caption Media Studio home">
+        <span class="brand-mark">C</span><span class="brand-copy"><b>Caption</b><small>MEDIA STUDIO</small></span>
+      </a>
+      <div class="nav-label">WORKSPACE</div>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-nav="dashboard"><span>◈</span> Dashboard</button>
+        <button class="nav-item" data-nav="captions"><span>▤</span> Caption Studio</button>
+        <button class="nav-item" data-nav="text"><span>✦</span> Text Animation</button>
+        <button class="nav-item" data-nav="voice"><span>◉</span> Voice to Text</button>
+        <button class="nav-item" data-nav="audio"><span>♫</span> Audio Tools</button>
+        <button class="nav-item" data-nav="video"><span>▣</span> Video Tools</button>
+        <button class="nav-item" data-nav="history"><span>◷</span> Export History</button>
+        <button class="nav-item" data-nav="settings"><span>⚙</span> Settings</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="local-badge"><span class="pulse-dot"></span><span>Private · local only</span></div>
+        <small>Files stay on this device.</small>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="menuToggle" aria-label="Open menu">☰</button>
+        <div class="breadcrumbs"><span>Workspace</span><b>/</b><strong id="currentPage">Dashboard</strong></div>
+        <div class="topbar-right">
+          <span class="server-chip" id="serverStatus"><i></i> Checking services</span>
+          <button class="icon-button" id="refreshButton" aria-label="Refresh status">↻</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-dashboard" data-title="Dashboard">
+        <div class="welcome-row">
+          <div><p class="eyebrow">YOUR CREATIVE WORKSPACE</p><h1>Make media <span>say more.</span></h1>
+            <p class="muted lead">Transcribe, polish, style and export — with your files staying local.</p></div>
+          <div class="date-pill" id="todayLabel"></div>
+        </div>
+        <div class="hero-card">
+          <div class="hero-copy"><span class="hero-kicker">CAPTION STUDIO</span><h2>Start with your media.</h2>
+            <p>Upload an audio or video file to transcribe, extract audio or start editing captions.</p>
+            <label class="button button-primary" for="dashboardUpload">Choose media <span>↗</span></label>
+            <input id="dashboardUpload" class="visually-hidden" type="file" accept="audio/*,video/*">
+            <small class="muted" id="dashboardFileName">No file selected</small>
+            <div class="upload-progress hidden" id="dashboardProgress"><div><span></span></div><small>Uploading…</small></div>
+          </div>
+          <div class="hero-art" aria-hidden="true"><div class="orb orb-a"></div><div class="orb orb-b"></div>
+            <div class="soundwave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="caption-float">Your words, in motion<span>✦</span></div></div>
+        </div>
+        <div class="section-heading"><div><p class="eyebrow">QUICK ACCESS</p><h2>Pick up where you need</h2></div></div>
+        <div class="quick-grid">
+          <button class="quick-card" data-nav="captions"><span class="quick-icon violet">▤</span><b>Generate captions</b><small>Speech to editable subtitles</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-nav="text"><span class="quick-icon blue">✦</span><b>Animate text</b><small>Layer titles over your video</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-nav="audio"><span class="quick-icon mint">♫</span><b>Audio toolkit</b><small>Extract, convert and trim</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-nav="voice"><span class="quick-icon amber">◉</span><b>Voice to text</b><small>Record or upload a voice clip</small><span class="card-arrow">↗</span></button>
+        </div>
+        <div class="dashboard-bottom">
+          <article class="panel"><div class="panel-heading"><div><p class="eyebrow">RECENT ACTIVITY</p><h3>Latest exports</h3></div><button class="text-button" data-nav="history">View all ↗</button></div><div id="recentFiles" class="recent-list empty-note">Your exports will appear here.</div></article>
+          <article class="panel status-panel"><div class="panel-heading"><div><p class="eyebrow">DEVICE CHECK</p><h3>Local services</h3></div></div><div id="serviceSummary" class="service-list"></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="view-captions" data-title="Caption Studio">
+        <div class="page-heading"><div><p class="eyebrow">TRANSCRIBE & STYLE</p><h1>Caption Studio</h1><p class="muted">Generate speech captions, compare corrections and export subtitles.</p></div></div>
+        <div class="workspace-grid">
+          <div class="workspace-main">
+            <article class="panel upload-panel">
+              <div class="panel-heading"><div><h3>1. Choose media</h3><p class="muted">Audio or video · up to <span data-max-upload>1024</span> MB</p></div><span class="step-number">01</span></div>
+              <label class="dropzone" for="captionUpload"><span class="drop-icon">⇧</span><b id="captionFileName">Drop a file here or browse</b><small>MP4, MOV, MKV, MP3, WAV, M4A, FLAC and more</small></label>
+              <input id="captionUpload" class="visually-hidden" type="file" accept="audio/*,video/*">
+              <div class="upload-progress hidden" id="captionProgress"><div><span></span></div><small>Uploading…</small></div>
+              <div class="form-grid three">
+                <label>Language<select id="captionLanguage"><option value="auto">Auto detect / Hinglish</option><option value="hi">Hindi</option><option value="en">English</option><option value="ur">Urdu</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="ja">Japanese</option><option value="zh">Chinese</option><option value="ar">Arabic</option><option value="pt">Portuguese</option><option value="ru">Russian</option><option value="it">Italian</option><option value="ko">Korean</option><option value="pa">Punjabi</option><option value="bn">Bengali</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="tr">Turkish</option><option value="nl">Dutch</option><option value="id">Indonesian</option><option value="th">Thai</option><option value="vi">Vietnamese</option><option value="pl">Polish</option><option value="fa">Persian</option><option value="he">Hebrew</option><option value="sv">Swedish</option><option value="uk">Ukrainian</option><option value="el">Greek</option><option value="ms">Malay</option><option value="custom">Other · use code below</option></select></label>
+                <label>Whisper model<select id="whisperModel"><option value="tiny">Tiny · ~0.7 GB</option><option value="base">Base · ~1 GB</option><option value="small">Small · ~1.8 GB</option><option value="medium">Medium · ~3.2 GB</option></select></label>
+                <label>Max words / line<input type="number" id="maxWords" min="1" max="20" value="7"></label>
+                <label id="customLanguageWrap" class="hidden">Other language code<input id="customLanguage" type="text" maxlength="3" pattern="[A-Za-z]{2,3}" placeholder="e.g. sw"></label>
+              </div>
+              <div class="button-row"><label class="check-line"><input id="enableCorrection" type="checkbox" checked> Correct common spelling & punctuation</label>
+                <label class="check-line"><input id="wordTimestamps" type="checkbox" checked> Keep word timestamps</label>
+                <button class="button button-primary" id="transcribeButton">Generate captions <span>✦</span></button></div>
+              <div class="job-status hidden" id="captionJob"></div>
+            </article>
+            <article class="panel transcript-panel">
+              <div class="panel-heading"><div><h3>2. Review transcript</h3><p class="muted">Edit any line. Original text is preserved for comparison and export.</p></div>
+                <button class="button button-quiet" id="undoCaptions" disabled>↶ Undo</button></div>
+              <div id="transcriptEditor" class="transcript-editor empty-note">Generate captions to begin editing.</div>
+              <div class="transcript-tools">
+                <label class="check-line"><input id="runCorrection" type="checkbox" checked> Correction enabled</label>
+                <button class="button button-secondary" id="correctButton">Apply correction</button>
+                <button class="button button-quiet" id="addCaption">＋ Add line</button>
+              </div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><h3>3. Export subtitles</h3><p class="muted">Choose original or corrected dialogue. Export word timings when available.</p></div></div>
+              <div class="form-grid three">
+                <label>Format<select id="subtitleFormat"><option value="srt">SRT</option><option value="vtt">VTT</option><option value="txt">TXT</option></select></label>
+                <label>Text version<select id="subtitleVariant"><option value="corrected">Corrected</option><option value="original">Original</option></select></label>
+                <label class="check-line check-align"><input id="exportWordTimes" type="checkbox"> Word-level timestamps</label>
+              </div>
+              <div class="button-row"><button class="button button-primary" id="exportSubtitle">Export subtitle file</button><button class="button button-secondary" id="downloadOriginal">Export original</button></div>
+            </article>
+          </div>
+          <aside class="workspace-side">
+            <article class="panel preview-panel">
+              <div class="panel-heading"><div><p class="eyebrow">LIVE PREVIEW</p><h3>Caption look</h3></div><span class="preview-dot"></span></div>
+              <div class="caption-preview" id="captionPreview"><div class="preview-video-lines"><i></i><i></i><i></i></div><div class="caption-preview-text">Your caption appears here</div></div>
+              <div class="form-grid two">
+                <label>Preset<select id="captionPreset"><option value="custom">Custom</option><option value="shorts">Shorts Style</option><option value="reels">Instagram Reels</option><option value="gaming">Gaming Style</option><option value="podcast">Podcast Style</option><option value="cinematic">Cinematic Style</option><option value="minimal">Minimal Subtitle</option><option value="karaoke">Karaoke Style</option></select></label>
+                <label>Font<select id="captionFont"><option>Arial</option><option>sans-serif</option><option>Georgia</option><option>Trebuchet MS</option><option>Courier New</option></select></label>
+                <label>Font size<input type="range" id="captionSize" min="16" max="72" value="32"><small class="range-value" id="captionSizeValue">32 px</small></label>
+                <label>Font color<input type="color" id="captionColor" value="#ffffff"></label>
+                <label>Highlight color<input type="color" id="highlightColor" value="#a891ff"></label>
+                <label>Background color<input type="color" id="captionBg" value="#10111a"></label>
+                <label>Outline<input type="range" id="captionOutline" min="0" max="8" value="3"></label>
+                <label>Shadow<input type="range" id="captionShadow" min="0" max="12" value="5"></label>
+                <label>Position<select id="captionPosition"><option value="bottom">Bottom</option><option value="center">Center</option><option value="top">Top</option></select></label>
+                <label>Alignment<select id="captionAlign"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select></label>
+                <label>Lines<input type="number" id="captionLines" min="1" max="4" value="2"></label>
+                <label>Timing adjustment (ms)<input type="number" id="captionTiming" min="-5000" max="5000" step="50" value="0"></label>
+                <label>Line spacing (preview)<input type="range" id="captionSpacing" min="0.8" max="2" step="0.1" value="1.2"></label>
+                <label>Background opacity<input type="range" id="captionOpacity" min="0" max="100" value="55"></label>
+                <label class="check-line"><input id="captionBold" type="checkbox" checked> Bold</label>
+                <label class="check-line"><input id="captionItalic" type="checkbox"> Italic</label>
+                <label class="check-line"><input id="activeHighlight" type="checkbox" checked> Highlight active words</label>
+              </div>
+              <div class="preview-notice">Preview is approximate; FFmpeg text rendering and installed fonts can differ slightly.</div>
+              <button class="button button-secondary full-width" id="burnCaptions">Render video with captions</button>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-text" data-title="Text Animation Studio">
+        <div class="page-heading"><div><p class="eyebrow">OVERLAYS & MOTION</p><h1>Text Animation Studio</h1><p class="muted">Build independent text layers and render them with FFmpeg.</p></div></div>
+        <div class="text-workspace">
+          <div class="text-tools-column">
+            <article class="panel upload-panel"><div class="panel-heading"><div><h3>1. Add a video</h3><p class="muted">Select the clip to preview and render.</p></div></div>
+              <label class="dropzone compact" for="studioUpload"><span class="drop-icon">＋</span><b id="studioFileName">Choose a video</b><small>MP4, MOV, MKV, WebM and more</small></label>
+              <input id="studioUpload" class="visually-hidden" type="file" accept="video/*">
+              <div class="upload-progress hidden" id="studioProgress"><div><span></span></div><small>Uploading…</small></div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><h3>2. Text layers</h3><p class="muted">Each layer has its own timing and style.</p></div><button class="button button-secondary" id="addLayer">＋ Add layer</button></div>
+              <div id="layerList" class="layer-list empty-note">Add a layer to start designing.</div>
+              <div class="timeline-wrap"><div class="timeline-head"><span>Timeline</span><span id="timelineDuration">00:00</span></div>
+                <div class="timeline-ruler"><span>0s</span><span>25%</span><span>50%</span><span>75%</span><span>End</span></div>
+                <div id="layerTimeline" class="layer-timeline"></div>
+              </div>
+            </article>
+            <article class="panel layer-settings">
+              <div class="panel-heading"><div><h3>Layer settings</h3><p class="muted" id="selectedLayerLabel">Select a text layer to edit.</p></div>
+                <div class="inline-actions"><button class="icon-button" id="duplicateLayer" title="Duplicate layer">▣</button><button class="icon-button danger-icon" id="deleteLayer" title="Delete layer">×</button></div></div>
+              <div class="form-grid two">
+                <label class="span-two">Text<textarea id="layerText" rows="2" maxlength="500" placeholder="Type your overlay text…" disabled></textarea></label>
+                <label>Layer type<select id="layerType" disabled><option>Normal text</option><option>Animated caption</option><option>Title</option><option>Heading</option><option>Gaming text</option><option>Intro / outro</option><option>Call to action</option><option>Custom overlay</option></select></label>
+                <label>Animation<select id="layerAnimation" disabled><option value="none">None</option><option value="fade">Fade in / fade out</option><option value="fade_in">Fade in</option><option value="fade_out">Fade out</option><option value="slide_left">Slide left</option><option value="slide_right">Slide right</option><option value="slide_up">Slide up</option><option value="slide_down">Slide down</option><option value="pop">Pop up</option><option value="zoom">Zoom in</option><option value="zoom_out">Zoom out</option><option value="bounce">Bounce</option><option value="typewriter">Typewriter</option><option value="word_by_word">Word by word</option><option value="letter_by_letter">Letter by letter</option><option value="karaoke">Karaoke highlight</option><option value="shake">Shake</option><option value="pulse">Pulse</option><option value="glow">Glow</option><option value="scale">Scale</option></select></label>
+                <label>Font family<select id="layerFont" disabled><option>Sans</option><option>Arial</option><option>Serif</option><option>Monospace</option></select></label>
+                <label>Font size<input id="layerFontSize" type="number" min="8" max="220" value="48" disabled></label>
+                <label>Color<input id="layerColor" type="color" value="#ffffff" disabled></label>
+                <label>Opacity<input id="layerOpacity" type="range" min="0" max="100" value="100" disabled></label>
+                <label>Outline<input id="layerOutline" type="range" min="0" max="12" value="2" disabled></label>
+                <label>Rotation (preview only)<input id="layerRotation" type="number" min="-180" max="180" value="0" disabled></label>
+                <label>Start (seconds)<input id="layerStart" type="number" min="0" step="0.1" value="0" disabled></label>
+                <label>End (seconds)<input id="layerEnd" type="number" min="0.1" step="0.1" value="5" disabled></label>
+                <label>Animation duration (s)<input id="layerAnimationDuration" type="number" min="0.05" max="10" step="0.05" value="0.5" disabled></label>
+                <label>Letter spacing<input id="layerLetterSpacing" type="number" min="0" max="30" value="0" disabled></label>
+                <label>Alignment<select id="layerAlign" disabled><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select></label>
+                <label>Line spacing<input id="layerLineSpacing" type="range" min="0.8" max="2" step="0.1" value="1.2" disabled></label>
+                <label>Shadow<input id="layerShadow" type="range" min="0" max="12" value="4" disabled></label>
+                <label class="check-line"><input id="layerBold" type="checkbox" disabled> Bold</label>
+                <label class="check-line"><input id="layerItalic" type="checkbox" disabled> Italic</label>
+                <label class="check-line"><input id="layerBackground" type="checkbox" disabled> Background box</label>
+                <label class="check-line"><input id="layerRounded" type="checkbox" disabled> Rounded box (preview)</label>
+                <label class="check-line"><input id="layerGlow" type="checkbox" disabled> Glow</label>
+                <label class="check-line"><input id="layerGradient" type="checkbox" disabled> Gradient (preview)</label>
+              </div>
+              <p class="preview-notice">Drag text to reposition. Browser preview is approximate. Gradient, rotation and rounded boxes are preview-only; FFmpeg drawtext renders solid, unrotated text with square boxes.</p>
+              <button id="renderVideo" class="button button-primary full-width">Render video</button>
+              <div class="job-status hidden" id="renderJob"></div>
+            </article>
+          </div>
+          <div class="text-preview-column">
+            <article class="panel sticky-preview">
+              <div class="panel-heading"><div><p class="eyebrow">CANVAS PREVIEW</p><h3>Position & timing</h3></div><span class="preview-dot"></span></div>
+              <div class="video-canvas" id="videoCanvas">
+                <video id="studioVideo" controls playsinline></video>
+                <div class="video-placeholder" id="videoPlaceholder"><span>▣</span><b>Your video preview</b><small>Choose a clip to view</small></div>
+                <div class="overlay-preview" id="overlayPreview"></div>
+              </div>
+              <div class="preview-controls"><button class="button button-quiet" id="previewAnimation">▶ Preview animation</button><span class="muted" id="videoDurationLabel">Duration unavailable</span></div>
+              <label class="check-line render-subtitles-line"><input id="renderSubtitles" type="checkbox"> Include current captions in render</label>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-voice" data-title="Voice to Text">
+        <div class="page-heading"><div><p class="eyebrow">SPEAK OR UPLOAD</p><h1>Voice to Text</h1><p class="muted">Record from a supported browser or upload an audio clip for transcription.</p></div></div>
+        <div class="two-column">
+          <article class="panel voice-panel"><div class="panel-heading"><div><h3>Record voice</h3><p class="muted">Microphone access is requested by your browser.</p></div><span class="record-icon">●</span></div>
+            <div class="record-display"><span class="record-wave" id="recordWave">◉</span><b id="recordStatus">Ready to record</b><small id="recordTimer">00:00</small></div>
+            <div class="button-row centered"><button id="startRecording" class="button button-primary">Start recording</button><button id="stopRecording" class="button button-secondary" disabled>Stop & transcribe</button></div>
+            <div class="form-grid two"><label>Language<select id="voiceLanguage"><option value="auto">Auto detect</option><option value="hi">Hindi</option><option value="en">English</option><option value="ur">Urdu</option></select></label><label>Model<select id="voiceModel"><option value="tiny">Tiny · lowest memory</option><option value="base">Base</option><option value="small">Small</option></select></label></div>
+          </article>
+          <article class="panel voice-panel"><div class="panel-heading"><div><h3>Upload voice or audio</h3><p class="muted">Uses the same speech recognition and correction pipeline.</p></div><span class="quick-icon amber">♫</span></div>
+            <label class="dropzone" for="voiceUpload"><span class="drop-icon">⇧</span><b id="voiceFileName">Choose an audio recording</b><small>Supported audio formats</small></label><input id="voiceUpload" class="visually-hidden" type="file" accept="audio/*">
+            <div class="upload-progress hidden" id="voiceProgress"><div><span></span></div><small>Uploading…</small></div>
+            <div class="button-row"><button id="voiceTranscribe" class="button button-primary">Transcribe audio</button></div>
+          </article>
+        </div>
+        <article class="panel voice-result"><div class="panel-heading"><div><h3>Transcription result</h3><p class="muted">Edit generated caption lines in Caption Studio and export as TXT, SRT or VTT.</p></div><button class="button button-quiet" id="sendVoiceToCaptions">Open in Caption Studio</button></div>
+          <div id="voiceJob" class="job-status hidden"></div><div id="voiceTranscript" class="empty-note">Your transcription will appear here.</div>
+          <div class="button-row"><button id="voiceExportTxt" class="button button-secondary" disabled>Export TXT</button><button id="voiceExportSrt" class="button button-secondary" disabled>Export SRT</button><button id="voiceExportVtt" class="button button-secondary" disabled>Export VTT</button></div>
+        </article>
+        <article class="panel tts-panel"><div class="panel-heading"><div><p class="eyebrow">OPTIONAL · INTERNET REQUIRED</p><h3>Text to Voice</h3><p class="muted">Edge-TTS uses an online service. It is not required for local transcription.</p></div></div>
+          <label>Text<textarea id="ttsText" maxlength="5000" rows="3" placeholder="Type text to speak (up to 5,000 characters)"></textarea></label>
+          <div class="form-grid three"><label>Voice<select id="ttsVoice"><option value="hi-IN-SwaraNeural">Hindi · Swara</option><option value="hi-IN-MadhurNeural">Hindi · Madhur</option><option value="en-US-AriaNeural">English · Aria</option><option value="en-US-GuyNeural">English · Guy</option><option value="ur-PK-UzmaNeural">Urdu · Uzma</option><option value="ur-PK-AsadNeural">Urdu · Asad</option></select></label>
+            <label>Rate<select id="ttsRate"><option>+0%</option><option>+10%</option><option>+20%</option><option>+30%</option><option>-10%</option><option>-20%</option><option>-30%</option></select></label>
+            <label>Pitch<select id="ttsPitch"><option>+0Hz</option><option>+10Hz</option><option>+20Hz</option><option>-10Hz</option><option>-20Hz</option></select></label></div>
+          <div class="button-row"><button class="button button-primary" id="ttsGenerate">Generate MP3</button></div><div class="job-status hidden" id="ttsJob"></div><audio id="ttsPreview" class="tts-audio hidden" controls></audio>
+        </article>
+      </section>
+
+      <section class="view" id="view-audio" data-title="Audio Tools">
+        <div class="page-heading"><div><p class="eyebrow">EXTRACT · CONVERT · TRIM</p><h1>Audio Tools</h1><p class="muted">Process audio from a video or an audio file without loading it into memory.</p></div></div>
+        <div class="tool-layout">
+          <article class="panel">
+            <div class="panel-heading"><div><h3>Choose a source file</h3><p class="muted">Upload video or audio. FFmpeg is required for processing.</p></div></div>
+            <label class="dropzone" for="audioUpload"><span class="drop-icon">⇧</span><b id="audioFileName">Choose media file</b><small>Audio and video formats</small></label><input id="audioUpload" class="visually-hidden" type="file" accept="audio/*,video/*">
+            <div class="upload-progress hidden" id="audioProgress"><div><span></span></div><small>Uploading…</small></div>
+            <button id="mediaInfoButton" class="button button-quiet">Read media information</button><div id="mediaInfo" class="info-grid empty-note">Duration, format and stream information appear here.</div>
+          </article>
+          <div class="tool-cards">
+            <article class="panel"><span class="tool-icon blue">♫</span><h3>Extract video audio</h3><p class="muted">Create an audio file from the selected video.</p>
+              <div class="form-grid two"><label>Output format<select id="extractFormat"><option>mp3</option><option>wav</option><option>m4a</option><option>aac</option><option>opus</option><option>flac</option></select></label><label>Bitrate<select id="extractBitrate"><option>128k</option><option selected>192k</option><option>256k</option><option>320k</option></select></label></div>
+              <button id="extractAudioButton" class="button button-primary full-width">Extract audio</button><div class="job-status hidden" id="extractJob"></div></article>
+            <article class="panel"><span class="tool-icon violet">⟳</span><h3>Convert audio</h3><p class="muted">Convert audio input to a different format.</p>
+              <div class="form-grid two"><label>Output format<select id="convertFormat"><option>mp3</option><option>wav</option><option>m4a</option><option>aac</option><option>opus</option><option>flac</option></select></label><label>Bitrate<select id="convertBitrate"><option>128k</option><option selected>192k</option><option>256k</option><option>320k</option></select></label></div>
+              <button id="convertAudioButton" class="button button-primary full-width">Convert audio</button><div class="job-status hidden" id="convertJob"></div></article>
+            <article class="panel"><span class="tool-icon mint">◷</span><h3>Trim audio</h3><p class="muted">Set a time range in seconds; output is re-encoded to the selected format.</p>
+              <div class="form-grid three"><label>Start (s)<input id="trimStart" type="number" min="0" step="0.1" value="0"></label><label>End (s)<input id="trimEnd" type="number" min="0.1" step="0.1" value="10"></label><label>Format<select id="trimFormat"><option value="">Same as source</option><option>mp3</option><option>wav</option><option>m4a</option><option>opus</option><option>flac</option></select></label></div>
+              <button id="trimAudioButton" class="button button-primary full-width">Trim audio</button><div class="job-status hidden" id="trimJob"></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-video" data-title="Video Tools">
+        <div class="page-heading"><div><p class="eyebrow">QUICK VIDEO ACTIONS</p><h1>Video Tools</h1><p class="muted">Inspect a clip, extract audio, or add subtitles and text layers before export.</p></div></div>
+        <div class="two-column">
+          <article class="panel"><div class="panel-heading"><div><h3>Video to audio</h3><p class="muted">Use FFmpeg to extract a soundtrack.</p></div><span class="tool-icon blue">♫</span></div>
+            <label class="dropzone" for="videoUpload"><span class="drop-icon">⇧</span><b id="videoFileName">Choose a video</b><small>Supported video formats</small></label><input id="videoUpload" class="visually-hidden" type="file" accept="video/*">
+            <div class="upload-progress hidden" id="videoProgress"><div><span></span></div><small>Uploading…</small></div>
+            <div class="button-row"><button id="videoToMp3" class="button button-primary">Video to MP3</button><button id="videoToWav" class="button button-secondary">Video to WAV</button></div>
+            <div id="videoToolJob" class="job-status hidden"></div>
+          </article>
+          <article class="panel"><div class="panel-heading"><div><h3>Render a designed video</h3><p class="muted">Add timed text layers and optional captions.</p></div><span class="tool-icon violet">✦</span></div>
+            <p class="muted">Open Text Animation Studio to arrange layers, preview them and render a new MP4. Captions are managed in Caption Studio.</p>
+            <button class="button button-primary" data-nav="text">Open Text Animation Studio ↗</button>
+            <div class="preview-notice">Rendering requires an FFmpeg build with libx264 and drawtext. Audio stream copy is attempted.</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-history" data-title="Export History">
+        <div class="page-heading"><div><p class="eyebrow">YOUR OUTPUTS</p><h1>Export History</h1><p class="muted">Generated files are stored in the project's outputs folder.</p></div><button class="button button-secondary" id="refreshHistory">↻ Refresh</button></div>
+        <article class="panel"><div id="historyList" class="history-list empty-note">Loading files…</div></article>
+        <article class="panel"><div class="panel-heading"><div><h3>Recent jobs</h3><p class="muted">Only queued jobs can be cancelled safely.</p></div></div><div id="jobHistory" class="job-history empty-note">No jobs yet.</div></article>
+      </section>
+
+      <section class="view" id="view-settings" data-title="Settings">
+        <div class="page-heading"><div><p class="eyebrow">LOCAL CONFIGURATION</p><h1>Settings & diagnostics</h1><p class="muted">Runtime limits and optional service availability.</p></div></div>
+        <div class="two-column">
+          <article class="panel"><div class="panel-heading"><div><h3>Environment</h3><p class="muted">Read from the running local server.</p></div></div><div id="settingsList" class="settings-list empty-note">Loading settings…</div></article>
+          <article class="panel"><div class="panel-heading"><div><h3>Service diagnostics</h3><p class="muted">Optional packages are detected, not installed automatically.</p></div></div><div id="diagnosticsList" class="service-list"></div>
+            <div class="preview-notice">For a Termux setup, install dependencies in a project virtual environment. Faster-Whisper/CTranslate2 compatibility varies by Python version and Android architecture.</div></article>
+        </div>
+        <article class="panel"><div class="panel-heading"><div><h3>Storage locations</h3></div></div><div class="storage-grid"><div><span>Uploads</span><code>Caption-Media-Studio/uploads/</code></div><div><span>Generated files</span><code>Caption-Media-Studio/outputs/</code></div><div><span>Temporary files</span><code>Caption-Media-Studio/temp/</code></div><div><span>Logs & job database</span><code>Caption-Media-Studio/logs/</code></div></div></article>
+      </section>
+    </main>
+  </div>
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <div class="modal-backdrop hidden" id="confirmBackdrop"><div class="modal"><h3 id="confirmTitle">Confirm action</h3><p id="confirmMessage"></p><div class="button-row"><button id="confirmCancel" class="button button-quiet">Cancel</button><button id="confirmOkay" class="button button-danger">Delete</button></div></div></div>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>
