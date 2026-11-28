@@ -82,10 +82,17 @@
               <div class="upload-progress hidden" id="captionProgress"><div><span></span></div><small>Uploading…</small></div>
               <div class="form-grid three">
                 <label>Language<select id="captionLanguage"><option value="auto">Auto detect / Hinglish</option><option value="hi">Hindi</option><option value="en">English</option><option value="ur">Urdu</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="ja">Japanese</option><option value="zh">Chinese</option><option value="ar">Arabic</option><option value="pt">Portuguese</option><option value="ru">Russian</option><option value="it">Italian</option><option value="ko">Korean</option><option value="pa">Punjabi</option><option value="bn">Bengali</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="tr">Turkish</option><option value="nl">Dutch</option><option value="id">Indonesian</option><option value="th">Thai</option><option value="vi">Vietnamese</option><option value="pl">Polish</option><option value="fa">Persian</option><option value="he">Hebrew</option><option value="sv">Swedish</option><option value="uk">Ukrainian</option><option value="el">Greek</option><option value="ms">Malay</option><option value="custom">Other · use code below</option></select></label>
+                <label>Recognition engine<select id="captionEngine"><option value="faster-whisper">Faster-Whisper</option><option value="whisper.cpp">Whisper.cpp · Tiny</option></select></label>
                 <label>Whisper model<select id="whisperModel"><option value="tiny">Tiny · ~0.7 GB</option><option value="base">Base · ~1 GB</option><option value="small">Small · ~1.8 GB</option><option value="medium">Medium · ~3.2 GB</option></select></label>
                 <label>Max words / line<input type="number" id="maxWords" min="1" max="20" value="7"></label>
                 <label id="customLanguageWrap" class="hidden">Other language code<input id="customLanguage" type="text" maxlength="3" pattern="[A-Za-z]{2,3}" placeholder="e.g. sw"></label>
               </div>
+              <div class="button-row model-download-row">
+                <button class="button button-quiet" id="downloadWhisperTiny">Download Whisper.cpp Tiny model</button>
+                <span class="muted" id="whisperCppModelStatus">Checking Whisper.cpp Tiny model…</span>
+              </div>
+              <div class="job-status hidden" id="whisperCppModelJob"></div>
+              <small class="preview-notice">Whisper.cpp uses the verified Tiny model and does not provide word-level timestamps through this integration.</small>
               <div class="button-row"><label class="check-line"><input id="enableCorrection" type="checkbox" checked> Correct common spelling & punctuation</label>
                 <label class="check-line"><input id="wordTimestamps" type="checkbox" checked> Keep word timestamps</label>
                 <button class="button button-primary" id="transcribeButton">Generate captions <span>✦</span></button></div>
@@ -200,6 +207,7 @@
               </div>
               <div class="preview-controls"><button class="button button-quiet" id="previewAnimation">▶ Preview animation</button><span class="muted" id="videoDurationLabel">Duration unavailable</span></div>
               <label class="check-line render-subtitles-line"><input id="renderSubtitles" type="checkbox"> Include current captions in render</label>
+              <p class="preview-notice">Render MP4 with or without subtitles. Exports are checked for H.264, yuv420p, AAC audio when present, duration and stream sync before download.</p>
             </article>
           </div>
         </div>
@@ -211,7 +219,14 @@
           <article class="panel voice-panel"><div class="panel-heading"><div><h3>Record voice</h3><p class="muted">Microphone access is requested by your browser.</p></div><span class="record-icon">●</span></div>
             <div class="record-display"><span class="record-wave" id="recordWave">◉</span><b id="recordStatus">Ready to record</b><small id="recordTimer">00:00</small></div>
             <div class="button-row centered"><button id="startRecording" class="button button-primary">Start recording</button><button id="stopRecording" class="button button-secondary" disabled>Stop & transcribe</button></div>
-            <div class="form-grid two"><label>Language<select id="voiceLanguage"><option value="auto">Auto detect</option><option value="hi">Hindi</option><option value="en">English</option><option value="ur">Urdu</option></select></label><label>Model<select id="voiceModel"><option value="tiny">Tiny · lowest memory</option><option value="base">Base</option><option value="small">Small</option></select></label></div>
+            <div class="form-grid two">
+              <label>Language<select id="voiceLanguage"><option value="auto">Auto detect</option><option value="hi">Hindi</option><option value="en">English</option><option value="ur">Urdu</option><option value="custom">Other · use code below</option></select></label>
+              <label>Recognition engine<select id="voiceEngine"><option value="faster-whisper">Faster-Whisper</option><option value="whisper.cpp">Whisper.cpp · Tiny</option></select></label>
+              <label>Model<select id="voiceModel"><option value="tiny">Tiny · lowest memory</option><option value="base">Base</option><option value="small">Small</option><option value="medium">Medium</option></select></label>
+              <label id="voiceCustomLanguageWrap" class="hidden">Other language code<input id="voiceCustomLanguage" type="text" maxlength="3" pattern="[A-Za-z]{2,3}" placeholder="e.g. sw"></label>
+            </div>
+            <div class="button-row model-download-row"><button class="button button-quiet" id="downloadWhisperTinyVoice">Download Whisper.cpp Tiny model</button><span class="muted" id="whisperCppModelStatusVoice">Checking Whisper.cpp Tiny model…</span></div>
+            <div class="job-status hidden" id="whisperCppModelJobVoice"></div>
           </article>
           <article class="panel voice-panel"><div class="panel-heading"><div><h3>Upload voice or audio</h3><p class="muted">Uses the same speech recognition and correction pipeline.</p></div><span class="quick-icon amber">♫</span></div>
             <label class="dropzone" for="voiceUpload"><span class="drop-icon">⇧</span><b id="voiceFileName">Choose an audio recording</b><small>Supported audio formats</small></label><input id="voiceUpload" class="visually-hidden" type="file" accept="audio/*">
@@ -225,9 +240,14 @@
         </article>
         <article class="panel tts-panel"><div class="panel-heading"><div><p class="eyebrow">OPTIONAL · INTERNET REQUIRED</p><h3>Text to Voice</h3><p class="muted">Edge-TTS uses an online service. It is not required for local transcription.</p></div></div>
           <label>Text<textarea id="ttsText" maxlength="5000" rows="3" placeholder="Type text to speak (up to 5,000 characters)"></textarea></label>
-          <div class="form-grid three"><label>Voice<select id="ttsVoice"><option value="hi-IN-SwaraNeural">Hindi · Swara</option><option value="hi-IN-MadhurNeural">Hindi · Madhur</option><option value="en-US-AriaNeural">English · Aria</option><option value="en-US-GuyNeural">English · Guy</option><option value="ur-PK-UzmaNeural">Urdu · Uzma</option><option value="ur-PK-AsadNeural">Urdu · Asad</option></select></label>
+          <div class="form-grid three">
+            <label>Language<select id="ttsLanguage"><option value="auto">Auto detect</option></select></label>
+            <label>Neural voice<select id="ttsVoice"><option value="auto">Automatic (match language)</option></select></label>
             <label>Rate<select id="ttsRate"><option>+0%</option><option>+10%</option><option>+20%</option><option>+30%</option><option>-10%</option><option>-20%</option><option>-30%</option></select></label>
-            <label>Pitch<select id="ttsPitch"><option>+0Hz</option><option>+10Hz</option><option>+20Hz</option><option>-10Hz</option><option>-20Hz</option></select></label></div>
+            <label>Pitch<select id="ttsPitch"><option>+0Hz</option><option>+10Hz</option><option>+20Hz</option><option>-10Hz</option><option>-20Hz</option></select></label>
+            <label>Volume<select id="ttsVolume"><option>+0%</option><option>+10%</option><option>+20%</option><option>+30%</option><option>-10%</option><option>-20%</option><option>-30%</option></select></label>
+          </div>
+          <div class="button-row"><button class="button button-quiet" id="refreshTtsVoices">Refresh Neural voices</button><span class="muted" id="ttsCatalogStatus">Loading verified Neural voices…</span></div>
           <div class="button-row"><button class="button button-primary" id="ttsGenerate">Generate MP3</button></div><div class="job-status hidden" id="ttsJob"></div><audio id="ttsPreview" class="tts-audio hidden" controls></audio>
         </article>
       </section>

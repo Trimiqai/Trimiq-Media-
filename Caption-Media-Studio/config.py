@@ -11,6 +11,7 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "outputs"
 TEMP_DIR = DATA_DIR / "temp"
 LOG_DIR = DATA_DIR / "logs"
+MODELS_DIR = DATA_DIR / "models"
 DATABASE_PATH = LOG_DIR / "jobs.sqlite3"
 
 HOST = os.environ.get("CMS_HOST", "127.0.0.1")
@@ -37,5 +38,5 @@ WHISPER_DEVICE = os.environ.get("CMS_WHISPER_DEVICE", "cpu")
 WHISPER_COMPUTE_TYPE = os.environ.get("CMS_WHISPER_COMPUTE_TYPE", "int8")
 WHISPER_CPU_THREADS = max(1, int(os.environ.get("CMS_WHISPER_CPU_THREADS", "2")))
 
-for directory in (UPLOAD_DIR, OUTPUT_DIR, TEMP_DIR, LOG_DIR):
+for directory in (UPLOAD_DIR, OUTPUT_DIR, TEMP_DIR, LOG_DIR, MODELS_DIR):
     directory.mkdir(parents=True, exist_ok=True)

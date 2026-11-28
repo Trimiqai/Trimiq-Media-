@@ -17,7 +17,9 @@ from flask import Flask, jsonify, render_template, request, send_file
 from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 import config
-from modules import audio_tools, correction_engine, subtitle_export, text_to_voice, video_tools
+from modules import (
+    audio_tools, correction_engine, subtitle_export, text_to_voice, video_tools, whisper_cpp,
+)
 from modules.caption_engine import transcribe
 from modules.file_store import (
     ALLOWED_MEDIA, ALLOWED_OUTPUTS, FileValidationError, new_id,
@@ -150,12 +152,15 @@ def health():
     import importlib.util
     import shutil
 
+    cpp_status = whisper_cpp.model_status()
     return jsonify({
         "status": "ok",
         "python": os.sys.version.split()[0],
         "ffmpeg": bool(shutil.which("ffmpeg")),
         "ffprobe": bool(shutil.which("ffprobe")),
         "faster_whisper": importlib.util.find_spec("faster_whisper") is not None,
+        "whisper_cpp_cli": cpp_status["cli_available"],
+        "whisper_cpp_tiny_model": cpp_status["model_valid"],
         "edge_tts": importlib.util.find_spec("edge_tts") is not None,
         "max_upload_mb": config.MAX_UPLOAD_MB,
         "queue_worker_count": 1,
@@ -172,9 +177,31 @@ def settings():
         "whisper_compute_type": config.WHISPER_COMPUTE_TYPE,
         "host": config.HOST,
         "port": config.PORT,
-        "voices": text_to_voice.SUPPORTED_VOICES,
+        "voices": text_to_voice.cached_voice_labels(),
+        "voice_catalog_endpoint": "/api/tts/voices",
         "memory": memory_status(),
     })
+
+
+@app.get("/api/tts/voices")
+def tts_voices():
+    try:
+        catalog = text_to_voice.list_neural_voices(
+            force_refresh=request.args.get("refresh") == "1"
+        )
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc), "voices": [], "languages": []}), 503
+    return jsonify(catalog)
+
+
+@app.get("/api/whisper-cpp/model")
+def whisper_cpp_model_status():
+    return jsonify(whisper_cpp.model_status())
+
+
+@app.post("/api/whisper-cpp/model/download")
+def download_whisper_cpp_model():
+    return _queue("Whisper.cpp Tiny model download", whisper_cpp.download_tiny_model)
 
 
 @app.post("/api/upload")
@@ -223,11 +250,16 @@ def start_transcription():
     model_name = str(data.get("model", config.WHISPER_MODEL))
     if model_name not in {"tiny", "base", "small", "medium"}:
         return jsonify({"error": "Select a supported Whisper model size."}), 400
+    engine = str(data.get("engine", "faster-whisper"))
+    if engine not in {"faster-whisper", "whisper.cpp"}:
+        return jsonify({"error": "Choose Faster-Whisper or Whisper.cpp."}), 400
+    if engine == "whisper.cpp" and model_name != "tiny":
+        return jsonify({"error": "Whisper.cpp currently uses its verified Tiny model only."}), 400
     return _queue(
         "transcription", transcribe, str(path),
         None if language == "auto" else language,
         model_name, bool(data.get("correct", True)),
-        bool(data.get("word_timestamps", True)),
+        bool(data.get("word_timestamps", True)), engine,
     )
 
 
@@ -239,14 +271,19 @@ def start_voice_transcription():
     except FileValidationError as exc:
         return jsonify({"error": str(exc)}), 400
     language = str(data.get("language", "auto"))
-    if language not in {"auto", "hi", "en", "ur"}:
-        return jsonify({"error": "Choose automatic detection, Hindi, English, or Urdu."}), 400
+    if language != "auto" and not re.fullmatch(r"[a-z]{2,3}", language):
+        return jsonify({"error": "Use a supported two- or three-letter Whisper language code."}), 400
     model_name = str(data.get("model", config.WHISPER_MODEL))
-    if model_name not in {"tiny", "base", "small"}:
-        return jsonify({"error": "Select tiny, base, or small model."}), 400
+    if model_name not in {"tiny", "base", "small", "medium"}:
+        return jsonify({"error": "Select a supported Whisper model size."}), 400
+    engine = str(data.get("engine", "faster-whisper"))
+    if engine not in {"faster-whisper", "whisper.cpp"}:
+        return jsonify({"error": "Choose Faster-Whisper or Whisper.cpp."}), 400
+    if engine == "whisper.cpp" and model_name != "tiny":
+        return jsonify({"error": "Whisper.cpp currently uses its verified Tiny model only."}), 400
     return _queue("voice transcription", transcribe_voice, str(path),
                   None if language == "auto" else language, model_name,
-                  bool(data.get("correct", True)))
+                  bool(data.get("correct", True)), engine)
 
 
 @app.post("/api/subtitles/correct")
@@ -357,10 +394,16 @@ def render_video():
 def start_tts():
     data = _json_body()
     text = str(data.get("text", ""))
-    voice = str(data.get("voice", ""))
+    voice = str(data.get("voice", "auto"))
     rate = str(data.get("rate", "+0%"))
     pitch = str(data.get("pitch", "+0Hz"))
-    return _queue("text to speech", text_to_voice.synthesize, text, voice, rate, pitch)
+    language = str(data.get("language", "auto"))
+    volume = str(data.get("volume", "+0%"))
+    if language != "auto" and not re.fullmatch(r"[a-z]{2,3}(?:-[A-Z]{2})?", language):
+        return jsonify({"error": "Choose auto-detect or a language/locale from the Neural voice list."}), 400
+    return _queue(
+        "text to speech", text_to_voice.synthesize, text, voice, rate, pitch, language, volume
+    )
 
 
 @app.get("/api/jobs")

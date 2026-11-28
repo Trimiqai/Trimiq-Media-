@@ -4,8 +4,9 @@ from modules.caption_engine import transcribe
 
 
 def transcribe_voice(context, audio_path: str, language: str | None = None,
-                     model_name: str | None = None, correct: bool = True) -> dict:
+                     model_name: str | None = None, correct: bool = True,
+                     engine: str = "faster-whisper") -> dict:
     return transcribe(
         context, audio_path, language=language, model_name=model_name,
-        correct=correct, word_timestamps=True,
+        correct=correct, word_timestamps=True, engine=engine,
     )

@@ -17,7 +17,14 @@ _MODEL_KEY = None
 
 def transcribe(context, media_path: str, language: str | None = None,
                model_name: str | None = None, correct: bool = True,
-               word_timestamps: bool = True) -> dict:
+               word_timestamps: bool = True,
+               engine: str = "faster-whisper") -> dict:
+    if engine == "whisper.cpp":
+        from modules.whisper_cpp import transcribe_tiny
+        return transcribe_tiny(context, media_path, language=language, correct=correct)
+    if engine != "faster-whisper":
+        raise ValueError("Choose Faster-Whisper or Whisper.cpp.")
+
     global _MODEL, _MODEL_KEY
     try:
         from faster_whisper import WhisperModel
@@ -28,7 +35,9 @@ def transcribe(context, media_path: str, language: str | None = None,
         ) from exc
 
     model_name = model_name or config.WHISPER_MODEL
-    ensure_model_memory(model_name)
+    memory_advice = ensure_model_memory(model_name)
+    if memory_advice["warning"]:
+        LOGGER.warning(memory_advice["warning"])
     model_key = (model_name, config.WHISPER_DEVICE, config.WHISPER_COMPUTE_TYPE)
     if _MODEL_KEY != model_key:
         _MODEL = None

@@ -7,14 +7,16 @@ A localhost-only, mobile-friendly Flask workspace for media transcription, subti
 - One responsive dashboard with Caption Studio, Text Animation Studio, Voice-to-Text, Audio Tools, Video Tools, Export History and Settings.
 - Local audio/video uploads with extension/MIME checks, random storage names, progress indication and a configurable upload limit.
 - One background worker, persistent SQLite job status, restart recovery for interrupted jobs and safe cancellation of jobs that have not started.
-- Lazy Faster-Whisper loading with model reuse, CPU thread configuration, compute-type capability checks and a memory-availability guard.
+- Lazy Faster-Whisper loading with model reuse, CPU thread configuration, compute-type capability checks and advisory memory estimates.
+- Optional Whisper.cpp Tiny CLI transcription with verified local-model detection, checksum-checked on-demand download, manual/automatic language selection and audio preprocessing.
 - Editable speech segments, original/corrected comparison, conservative offline English/Hinglish/Devanagari corrections, timing edits and undo.
 - SRT, VTT and TXT exports, optional word-level exports, styled ASS subtitle burn-in and karaoke highlighting when matching word timings are available.
+- Android-oriented MP4 export with H.264/yuv420p video, AAC audio when the source has audio, fast-start metadata, compatible-stream remuxing when possible, and ffprobe validation before the output is published. Subtitle burning is optional.
 - Layered text overlays, timing, drag positioning, a simple timeline and FFmpeg rendering for fade, slide, pop/zoom/scale, bounce, typewriter, word/letter reveal, karaoke, shake, pulse and glow presets.
-- Browser microphone recording where supported, audio upload, video audio extraction, audio conversion/trimming, media information and optional Edge-TTS MP3 generation.
+- Browser microphone recording where supported, audio upload, video audio extraction, audio conversion/trimming, media information and optional Edge-TTS Neural MP3 generation with a refreshed online voice catalog, language selection, automatic voice matching and synthesis volume controls.
 - Output download/delete history, temporary-file cleanup, server health, local-only binding, logs and single-server startup locking.
 
-The browser preview approximates FFmpeg output. Installed fonts, FFmpeg build options and font rendering can differ. Gradient text, rounded text boxes, line spacing and rotation are preview-only with the current renderer; those options render as solid, unrotated text with square backgrounds and default subtitle line spacing. Positive text-layer letter spacing is approximated with thin-space glyphs. FFmpeg must include the filters/codecs used by a particular operation (notably `drawtext`, `subtitles`/libass and `libx264`).
+The browser preview approximates FFmpeg output. Installed fonts, FFmpeg build options and font rendering can differ. Gradient text, rounded text boxes, line spacing and rotation are preview-only with the current renderer; those options render as solid, unrotated text with square backgrounds and default subtitle line spacing. Positive text-layer letter spacing is approximated with thin-space glyphs. FFmpeg must include the filters/codecs used by a particular operation (notably `drawtext`, `subtitles`/libass, `libx264`, and `aac` when source audio needs conversion). Export checks encoder availability and validates the finished MP4 with `ffprobe`; invalid or partial output is not made available for download. Compatible input video/audio streams are copied when filters and codecs allow it.
 
 ## Termux setup (Android)
 
@@ -45,7 +47,9 @@ If that check reports that a compatible wheel is unavailable, do not force a sou
 python -m pip install -r requirements-optional.txt
 ```
 
-No paid API is needed. Edge-TTS is optional, uses the internet and sends its entered text to the Edge-TTS service; local transcription does not use it.
+Whisper.cpp is an alternative local transcription engine. Install/build the `whisper-cli` executable for Termux and ensure it is on `PATH` (or set `CMS_WHISPER_CPP_BIN` to its executable path). In Caption Studio or Voice to Text, choose **Whisper.cpp · Tiny** and use **Download / verify Tiny model** once. The app stores the 75 MiB multilingual Tiny model under `models/`, validates its published SHA-1 checksum before use, and avoids downloading it again when valid. Model downloading requires internet access; transcription itself is local. Whisper.cpp output currently provides segment timestamps, not word-level timestamps. The CLI starts a new process per job, so the model is loaded for each transcription.
+
+No paid API is needed. Edge-TTS is optional, uses the internet and sends its entered text to the Edge-TTS service; local transcription does not use it. Its voice list is discovered from Edge-TTS, cached for six hours and filtered to verified Neural voices only. You can refresh the catalog, select a locale and voice, or leave automatic matching enabled. If a selected Neural voice is unavailable, the app may try another verified Neural voice in the same locale/language; it never falls back to a non-Neural voice. If the catalog or requested language has no Neural voice, synthesis reports an explicit error.
 
 ## Start and use
 
@@ -84,17 +88,18 @@ export CMS_WHISPER_CPU_THREADS=2
 python app.py
 ```
 
-The selected compute type is checked against the installed CTranslate2 CPU capabilities; the app fails the transcription job with an explicit message rather than silently switching types. The model is loaded only on first transcription. Available-memory estimates are conservative and do not replace device-specific benchmarking; close other apps or select a smaller model when prompted.
+The selected compute type is checked against the installed CTranslate2 CPU capabilities; the app fails the transcription job with an explicit message rather than silently switching types. Faster-Whisper loads its model only on first use and reuses it while the process runs. Available-memory estimates are advisory only: the app does not block a model based on an arbitrary RAM threshold or silently change the selected model. Android may still terminate a process that exceeds device memory.
 
 ## Troubleshooting and recovery
 
 - **Port already in use / another app instance:** Stop the existing process in its Termux session before starting another. `logs/server.lock` prevents this app from starting twice.
-- **FFmpeg unavailable:** Install the Termux `ffmpeg` package. Check that the build has the required `drawtext`, `subtitles`/libass and `libx264` capabilities for rendering.
-- **Faster-Whisper/CTranslate2 install fails:** Check Python, Android ABI and wheel support first. This project intentionally does not force a large native source build or silently switch recognition engines.
-- **Memory warning:** Select `tiny` or `base`, close memory-heavy apps and retry. The app deliberately refuses a model when available memory is below its estimated requirement plus a safety reserve.
+- **FFmpeg unavailable / MP4 export fails:** Install the Termux `ffmpeg` package. Check that the build has `ffprobe`, the required `drawtext` and `subtitles`/libass filters, and `libx264`/`aac` encoders for the selected operation. The job reports FFmpeg errors and does not publish an MP4 until ffprobe verifies its container, streams, dimensions, pixel format and duration.
+- **Faster-Whisper/CTranslate2 install fails:** Check Python, Android ABI and wheel support first, or install `whisper-cli` and select Whisper.cpp. The app does not silently switch recognition engines.
+- **Whisper.cpp unavailable:** Ensure `whisper-cli` is executable and on `PATH`, or set `CMS_WHISPER_CPP_BIN`; download the Tiny model from the UI and wait for checksum verification.
+- **Memory warning:** Memory estimates are informational. Large models can still exceed Android's available memory; select Tiny or close other apps if the operating system terminates the process.
 - **Unsupported compute type:** Set `CMS_WHISPER_COMPUTE_TYPE` to one reported by the installed CTranslate2 build; the app does not silently lower/alter the setting.
 - **Job failed / interrupted:** Inspect the friendly error in the job history and detailed logs in `logs/app.log`. On restart, previously queued/running jobs are marked interrupted instead of being presented as completed. Incomplete media outputs are written under `temp/` and are not exposed in export history.
-- **Edge-TTS failed:** Check internet access and the selected voice. This feature is online-only.
+- **Edge-TTS failed:** Check internet access, refresh the Neural voice list, and select a locale with an available Neural voice. This feature is online-only and never substitutes a non-Neural voice.
 - **Restart:** Stop with `Ctrl-C`, then run `python app.py` again. The server shuts down the worker cleanly; SQLite keeps completed job records.
 
 ## Storage and privacy

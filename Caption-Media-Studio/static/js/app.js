@@ -18,6 +18,7 @@
     recordStartedAt: 0,
     recordTimer: null,
     mediaInfo: null,
+    ttsVoices: [],
   };
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -44,6 +45,47 @@
     return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
   }
 
+  function renderTtsVoiceOptions() {
+    const select = $("#ttsVoice");
+    const language = $("#ttsLanguage").value;
+    const previous = select.value;
+    const voices = state.ttsVoices.filter((voice) => (
+      language === "auto" || voice.locale === language || voice.language === language
+    ));
+    select.replaceChildren(new Option("Automatic (match language)", "auto"));
+    voices.forEach((voice) => {
+      const label = `${voice.display_name} · ${voice.locale}`;
+      select.add(new Option(label, voice.short_name));
+    });
+    select.value = voices.some((voice) => voice.short_name === previous) ? previous : "auto";
+  }
+
+  async function refreshTtsVoices(forceRefresh = false) {
+    const status = $("#ttsCatalogStatus");
+    const button = $("#refreshTtsVoices");
+    button.disabled = true;
+    status.textContent = "Loading verified Neural voices…";
+    try {
+      const catalog = await api(`/api/tts/voices${forceRefresh ? "?refresh=1" : ""}`);
+      const previousLanguage = $("#ttsLanguage").value;
+      state.ttsVoices = catalog.voices;
+      $("#ttsLanguage").replaceChildren(new Option("Auto detect", "auto"));
+      catalog.languages.forEach((item) => {
+        $("#ttsLanguage").add(new Option(item.locale, item.locale));
+      });
+      $("#ttsLanguage").value = catalog.languages.some((item) => item.locale === previousLanguage)
+        ? previousLanguage : "auto";
+      renderTtsVoiceOptions();
+      status.textContent = catalog.message;
+      $("#ttsGenerate").disabled = catalog.voices.length === 0;
+    } catch (error) {
+      status.textContent = error.message;
+      $("#ttsGenerate").disabled = true;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   function setView(name) {
     const view = $(`#view-${name}`);
     if (!view) return;
@@ -54,6 +96,7 @@
     if (name === "history") refreshHistory();
     if (name === "settings") refreshDiagnostics();
     if (name === "dashboard") refreshDashboard();
+    if (name === "captions" || name === "voice") refreshWhisperCppModelStatus();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -634,7 +677,6 @@
 
   async function renderVideo() {
     if (!state.studioMedia) return showToast("Upload a video in Text Animation Studio first.", "error");
-    if (!state.layers.length && !$("#renderSubtitles").checked) return showToast("Add a text layer or enable subtitle rendering first.", "error");
     await startJob("/api/video/render", {
       file_id: state.studioMedia.file_id,
       layers: state.layers,
@@ -845,6 +887,28 @@
     }
   }
 
+  async function refreshWhisperCppModelStatus() {
+    try {
+      const status = await api("/api/whisper-cpp/model");
+      ["whisperCppModelStatus", "whisperCppModelStatusVoice"].forEach((id) => {
+        const target = $(`#${id}`);
+        if (target) target.textContent = status.message;
+      });
+      ["downloadWhisperTiny", "downloadWhisperTinyVoice"].forEach((id) => {
+        const button = $(`#${id}`);
+        if (button) {
+          button.disabled = status.model_valid;
+          button.textContent = status.model_valid ? "Whisper.cpp Tiny model ready" : "Download / verify Tiny model";
+        }
+      });
+    } catch (error) {
+      ["whisperCppModelStatus", "whisperCppModelStatusVoice"].forEach((id) => {
+        const target = $(`#${id}`);
+        if (target) target.textContent = error.message;
+      });
+    }
+  }
+
   function renderServices(health, target) {
     if (!target) return;
     target.replaceChildren();
@@ -853,6 +917,8 @@
       ["FFmpeg", health.ffmpeg],
       ["ffprobe", health.ffprobe],
       ["Faster-Whisper", health.faster_whisper],
+      ["Whisper.cpp CLI", health.whisper_cpp_cli],
+      ["Whisper.cpp Tiny model", health.whisper_cpp_tiny_model],
       ["Edge-TTS", health.edge_tts],
     ];
     items.forEach(([name, ready]) => {
@@ -890,17 +956,20 @@
   async function startTranscription(media, voice = false) {
     if (!media) return showToast(voice ? "Record or upload an audio clip first." : "Upload an audio or video file first.", "error");
     const statusId = voice ? "voiceJob" : "captionJob";
-    let language = $(`#${voice ? "voiceLanguage" : "captionLanguage"}`).value;
-    if (!voice && language === "custom") {
-      language = $("#customLanguage").value.trim().toLowerCase();
+    const languageSelect = $(`#${voice ? "voiceLanguage" : "captionLanguage"}`);
+    let language = languageSelect.value;
+    if (language === "custom") {
+      language = $(`#${voice ? "voiceCustomLanguage" : "customLanguage"}`).value.trim().toLowerCase();
       if (!/^[a-z]{2,3}$/.test(language)) return showToast("Enter a two- or three-letter Whisper language code.", "error");
     }
-    const model = $(`#${voice ? "voiceModel" : "whisperModel"}`).value;
+    const engine = $(`#${voice ? "voiceEngine" : "captionEngine"}`).value;
+    const model = engine === "whisper.cpp" ? "tiny" : $(`#${voice ? "voiceModel" : "whisperModel"}`).value;
     const endpoint = voice ? "/api/voice/transcribe" : "/api/transcribe";
     return startJob(endpoint, {
       file_id: media.file_id,
       language,
       model,
+      engine,
       correct: voice ? true : $("#enableCorrection").checked,
       word_timestamps: voice ? true : $("#wordTimestamps").checked,
     }, statusId, (transcript) => {
@@ -908,6 +977,15 @@
       if (voice) $("#voiceTranscript").scrollIntoView({ behavior: "smooth", block: "center" });
       refreshHistory();
     });
+  }
+
+  function syncTranscriptionEngine(voice = false) {
+    const model = $(`#${voice ? "voiceModel" : "whisperModel"}`);
+    const useCpp = $(`#${voice ? "voiceEngine" : "captionEngine"}`).value === "whisper.cpp";
+    if (useCpp && !model.disabled) model.dataset.fasterWhisperValue = model.value;
+    if (useCpp) model.value = "tiny";
+    else if (model.disabled && model.dataset.fasterWhisperValue) model.value = model.dataset.fasterWhisperValue;
+    model.disabled = useCpp;
   }
 
   async function applyCorrection() {
@@ -1008,9 +1086,24 @@
     $("#captionLanguage").addEventListener("change", () => {
       $("#customLanguageWrap").classList.toggle("hidden", $("#captionLanguage").value !== "custom");
     });
+    $("#voiceLanguage").addEventListener("change", () => {
+      $("#voiceCustomLanguageWrap").classList.toggle("hidden", $("#voiceLanguage").value !== "custom");
+    });
+    $("#ttsLanguage").addEventListener("change", renderTtsVoiceOptions);
+    $("#refreshTtsVoices").addEventListener("click", () => refreshTtsVoices(true));
+    $("#captionEngine").addEventListener("change", () => syncTranscriptionEngine());
+    $("#voiceEngine").addEventListener("change", () => syncTranscriptionEngine(true));
+    $("#downloadWhisperTiny").addEventListener("click", () => startJob(
+      "/api/whisper-cpp/model/download", {}, "whisperCppModelJob",
+      refreshWhisperCppModelStatus,
+    ));
+    $("#downloadWhisperTinyVoice").addEventListener("click", () => startJob(
+      "/api/whisper-cpp/model/download", {}, "whisperCppModelJobVoice",
+      refreshWhisperCppModelStatus,
+    ));
     $("#whisperModel").addEventListener("change", () => {
       if (["small", "medium"].includes($("#whisperModel").value)) {
-        showToast("Larger models can need substantial free RAM. The server checks available memory before loading; it will not silently switch models.", "info", 6500);
+        showToast("Larger models can need substantial free RAM. Memory estimates are advisory; the app will not block a model or silently switch it.", "info", 6500);
       }
     });
     $("#correctButton").addEventListener("click", applyCorrection);
@@ -1099,10 +1192,18 @@
     $("#ttsGenerate").addEventListener("click", () => startJob("/api/tts", {
       text: $("#ttsText").value,
       voice: $("#ttsVoice").value,
+      language: $("#ttsLanguage").value,
       rate: $("#ttsRate").value,
       pitch: $("#ttsPitch").value,
+      volume: $("#ttsVolume").value,
     }, "ttsJob", (result) => {
       addOutputLink($("#ttsJob"), result);
+      if (result?.voice_name) {
+        showToast(
+          `${result.voice_name} (${result.locale})${result.voice_fallback ? " used as a Neural fallback" : ""}.`,
+          "success",
+        );
+      }
       if (result?.file_id) {
         $("#ttsPreview").src = `/api/files/${encodeURIComponent(result.file_id)}/preview`;
         $("#ttsPreview").classList.remove("hidden");
@@ -1162,7 +1263,11 @@
   function initialize() {
     $("#todayLabel").textContent = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(new Date());
     bindEvents();
+    syncTranscriptionEngine();
+    syncTranscriptionEngine(true);
     updateCaptionPreview();
+    refreshWhisperCppModelStatus();
+    refreshTtsVoices();
     refreshDashboard();
     refreshHistory();
     setInterval(() => {

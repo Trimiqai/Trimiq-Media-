@@ -8,9 +8,6 @@ MODEL_MEMORY_MB = {
     "small": 1800,
     "medium": 3200,
 }
-RESERVE_MB = 350
-
-
 def memory_status() -> dict:
     values = {}
     try:
@@ -34,10 +31,9 @@ def ensure_model_memory(model_name: str) -> dict:
         raise ValueError("Unsupported Whisper model size.")
     status = memory_status()
     available = status["available_mb"]
-    if available is not None and available < estimate + RESERVE_MB:
-        raise RuntimeError(
-            f"Not enough currently available memory for the {model_name} model "
-            f"(estimated {estimate} MB plus {RESERVE_MB} MB reserve; "
-            f"{available} MB available). Close other apps or select a smaller model."
-        )
-    return {**status, "estimated_model_mb": estimate, "reserve_mb": RESERVE_MB}
+    warning = (
+        f"The {model_name} model may need more than the {available} MB currently available."
+        if available is not None and available < estimate
+        else None
+    )
+    return {**status, "estimated_model_mb": estimate, "warning": warning}

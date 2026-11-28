@@ -5,7 +5,9 @@ uploads/*
 outputs/*
 temp/*
 logs/*
+models/*
 !uploads/.gitkeep
 !outputs/.gitkeep
 !temp/.gitkeep
 !logs/.gitkeep
+!models/.gitkeep
